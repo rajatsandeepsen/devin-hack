@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { defaultTelegramAuth, telegramChannel } from "eve/channels/telegram";
-import { db, users } from "@/db";
+import { db, monitors, users } from "@/db";
+import { ensureCategoryMonitor } from "@/lib/exa.ts";
 import {
 	formatProfile,
 	formatSubscriptions,
@@ -43,7 +44,8 @@ export default telegramChannel({
 			return { auth: defaultTelegramAuth(message) };
 		}
 
-		const [command] = text.split(/\s+/);
+		const [commandRaw] = text.split(/\s+/);
+		const command = commandRaw.split("@")[0];
 
 		switch (command) {
 			case "/start": {
@@ -164,6 +166,18 @@ export default telegramChannel({
 			);
 			if (current.has(category)) current.delete(category);
 			else current.add(category);
+
+			const wasAdded = !current.has(category);
+			if (wasAdded) {
+				current.add(category);
+				try {
+					await ensureCategoryMonitor(category);
+				} catch (e) {
+					console.error("Failed to ensure monitor", category, e);
+				}
+			} else {
+				current.delete(category);
+			}
 
 			const subscriptions = [...current];
 			await db

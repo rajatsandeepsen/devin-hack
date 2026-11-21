@@ -140,6 +140,14 @@ export const categories = {
 			"india.gov.in",
 		],
 	},
+	demo: {
+		name: "Demo",
+		icon: "🧪",
+		description: "Demo updates from rajatsandeepsen.github.io/government",
+		query:
+			"latest updates changes posted on rajatsandeepsen.github.io/government",
+		domains: ["rajatsandeepsen.github.io"],
+	},
 } as const;
 
 export type CategoryKey = keyof typeof categories;

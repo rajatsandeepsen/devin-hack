@@ -1,5 +1,7 @@
 import Exa from "exa-js";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { eq } from "drizzle-orm";
+import { db, monitors } from "@/db";
 import { categories, type CategoryKey } from "@/watch.ts";
 
 function getExa() {
@@ -71,6 +73,43 @@ export async function listMonitors(params?: {
 export async function triggerMonitor(monitorId: string) {
 	const exa = getExa();
 	return exa.monitors.trigger(monitorId);
+}
+
+export async function ensureCategoryMonitor(category: CategoryKey) {
+	const [existing] = await db
+		.select()
+		.from(monitors)
+		.where(eq(monitors.category, category));
+	if (existing) return existing;
+
+	const baseUrl = process.env.EVE_SERVER_URL;
+	if (!baseUrl) throw new Error("EVE_SERVER_URL is missing");
+	const webhookUrl = `${baseUrl.replace(/\/$/, "")}/webhooks/exa`;
+
+	const created = await createCategoryMonitor(category, webhookUrl);
+	if (!created.webhookSecret) {
+		throw new Error(`No webhookSecret returned for monitor ${category}`);
+	}
+
+	const [saved] = await db
+		.insert(monitors)
+		.values({
+			category,
+			monitorId: created.id,
+			webhookSecret: created.webhookSecret,
+			status: created.status ?? "active",
+		})
+		.onConflictDoNothing()
+		.returning();
+
+	if (saved) return saved;
+
+	const [afterConflict] = await db
+		.select()
+		.from(monitors)
+		.where(eq(monitors.category, category));
+	if (!afterConflict) throw new Error(`Failed to persist monitor for ${category}`);
+	return afterConflict;
 }
 
 export function verifyExaSignature(

@@ -3,6 +3,7 @@ import { defineTool } from "eve/tools";
 import { z } from "zod";
 import { categoryKeys } from "@/watch.ts";
 import { db, users } from "@/db";
+import { ensureCategoryMonitor } from "@/lib/exa.ts";
 import { mergeSubscriptions } from "@/lib/merge.ts";
 import { checkTelegramAuth } from "./print_info.ts";
 
@@ -27,6 +28,15 @@ export default defineTool({
 		const subscriptions = mergeSubscriptions(existing?.subscriptions ?? [], {
 			category,
 		});
+
+		const toEnsure = category === "all" ? categoryKeys : [category];
+		for (const key of toEnsure) {
+			try {
+				await ensureCategoryMonitor(key);
+			} catch (e) {
+				console.error("Failed to ensure monitor", key, e);
+			}
+		}
 
 		await db
 			.insert(users)
