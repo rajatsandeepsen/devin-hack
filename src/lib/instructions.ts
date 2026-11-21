@@ -14,20 +14,23 @@ export function formatUserInstructions(user?: {
 
 	const languageCode = (user.language ?? "en-IN") as LanguageCode;
 	const lang = languages[languageCode];
-	const languageLabel = lang
-		? languageCode === "en-IN"
-			? lang.nativeName
-			: `English / ${lang.nativeName}`
-		: "English";
+	const languageName = lang?.name ?? "English";
+	const nativeName = lang?.nativeName ?? "English";
 	const subs = (user.subscriptions ?? []).filter((s): s is CategoryKey =>
 		categoryKeys.includes(s as CategoryKey),
 	);
 
+	const languageRule =
+		languageCode === "en-IN"
+			? "- Reply in English."
+			: `- ALWAYS reply in ${languageName} (${nativeName}). Do not reply in English unless the user explicitly asks for English.`;
+
 	return [
 		"User context:",
-		`- Preferred language: ${languageLabel}`,
+		`- Preferred language: ${languageName} (${nativeName}, ${languageCode})`,
 		`- Subscriptions: ${subs.length ? subs.map((s) => categories[s].name).join(", ") : "None"}`,
+		languageRule,
 		"- If the user asks for updates, explain their subscribed categories and suggest /subscribe to change them.",
-		"- When replying conversationally, prefer the user's preferred language when possible. Use plain text only, no Markdown.",
+		"- Use plain text only. No Markdown formatting.",
 	];
 }

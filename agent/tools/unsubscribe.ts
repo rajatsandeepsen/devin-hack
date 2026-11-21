@@ -14,7 +14,7 @@ const inputSchema = z.object({
 
 export default defineTool({
 	description:
-		"Unsubscribe the current Telegram user from Watch Bot government update categories.",
+		"Unsubscribe the current Telegram user from Watch Bot government update categories. Use this when the user asks to stop/remove/unsubscribe updates in any language.",
 	inputSchema,
 	async execute({ category }, ctx) {
 		const id = checkTelegramAuth(ctx.session.auth.current);

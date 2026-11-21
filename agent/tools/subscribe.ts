@@ -15,7 +15,7 @@ const inputSchema = z.object({
 
 export default defineTool({
 	description:
-		"Subscribe the current Telegram user to Watch Bot government update categories. Use this when the user wants alerts for agriculture, weather, subsidies, jobs, education, health, business, finance, or transport updates.",
+		"Subscribe the current Telegram user to Watch Bot government update categories. Use this when the user wants alerts/updates for agriculture, weather, subsidies/welfare, jobs, education, health, business/MSME, finance/tax, transport, or demo - even if they ask in a non-English language.",
 	inputSchema,
 	async execute({ category }, ctx) {
 		const id = checkTelegramAuth(ctx.session.auth.current);
