@@ -13,16 +13,21 @@ export function formatUserInstructions(user?: {
 	}
 
 	const languageCode = (user.language ?? "en-IN") as LanguageCode;
-	const language = languages[languageCode]?.nativeName ?? languageCode;
+	const lang = languages[languageCode];
+	const languageLabel = lang
+		? languageCode === "en-IN"
+			? lang.nativeName
+			: `English / ${lang.nativeName}`
+		: "English";
 	const subs = (user.subscriptions ?? []).filter((s): s is CategoryKey =>
 		categoryKeys.includes(s as CategoryKey),
 	);
 
 	return [
 		"User context:",
-		`- Preferred language: ${language} (${languageCode})`,
+		`- Preferred language: ${languageLabel}`,
 		`- Subscriptions: ${subs.length ? subs.map((s) => categories[s].name).join(", ") : "None"}`,
 		"- If the user asks for updates, explain their subscribed categories and suggest /subscribe to change them.",
-		"- When replying conversationally, prefer the user's preferred language when possible.",
+		"- When replying conversationally, prefer the user's preferred language when possible. Use plain text only, no Markdown.",
 	];
 }

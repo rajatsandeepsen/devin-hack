@@ -49,16 +49,24 @@ export default telegramChannel({
 
 		switch (command) {
 			case "/start": {
+				const [user] = await db
+					.select({ language: users.language })
+					.from(users)
+					.where(eq(users.id, userId));
 				await ctx.telegram.sendMessage({
 					text: "Welcome to Watch Bot. Choose your preferred language:",
-					reply_markup: { inline_keyboard: getLanguageKeyboard() },
+					reply_markup: { inline_keyboard: getLanguageKeyboard(user?.language) },
 				});
 				return null;
 			}
 			case "/language": {
+				const [user] = await db
+					.select({ language: users.language })
+					.from(users)
+					.where(eq(users.id, userId));
 				await ctx.telegram.sendMessage({
 					text: "Choose your preferred language:",
-					reply_markup: { inline_keyboard: getLanguageKeyboard() },
+					reply_markup: { inline_keyboard: getLanguageKeyboard(user?.language) },
 				});
 				return null;
 			}

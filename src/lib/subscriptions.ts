@@ -28,27 +28,43 @@ export function formatProfile(user?: {
 	if (!user) return "No profile found yet. Send /start to set up Watch Bot.";
 
 	const languageCode = (user.language ?? "en-IN") as LanguageCode;
-	const language = languages[languageCode]?.nativeName ?? user.language ?? "English";
+	const language = languages[languageCode];
+	const languageLabel = language
+		? languageCode === "en-IN"
+			? language.nativeName
+			: `English / ${language.nativeName}`
+		: "English";
+
 	const subs = (user.subscriptions ?? []).filter((s): s is CategoryKey =>
 		categoryKeys.includes(s as CategoryKey),
 	);
 
 	return [
 		"Your Watch Bot profile:",
-		`- Language: ${language} (${languageCode})`,
+		`- Language: ${languageLabel}`,
 		`- Subscriptions: ${subs.length ? subs.map((s) => categories[s].name).join(", ") : "None"}`,
 	].join("\n");
 }
 
-export function getLanguageKeyboard() {
+export function getLanguageKeyboard(preferredLanguage?: string | null) {
+	const preferred =
+		preferredLanguage && preferredLanguage in languages
+			? (preferredLanguage as LanguageCode)
+			: "en-IN";
+
+	const codes: LanguageCode[] =
+		preferred === "en-IN"
+			? (Object.keys(languages) as LanguageCode[])
+			: ["en-IN", preferred];
+
 	const rows: Array<Array<{ text: string; callback_data: string }>> = [];
-	const entries = Object.entries(languages) as [LanguageCode, (typeof languages)[LanguageCode]][];
-	for (let i = 0; i < entries.length; i += 2) {
-		const row = entries.slice(i, i + 2).map(([code, lang]) => ({
-			text: `${lang.nativeName}`,
-			callback_data: `lang:${code}`,
-		}));
-		rows.push(row);
+	for (let i = 0; i < codes.length; i += 2) {
+		rows.push(
+			codes.slice(i, i + 2).map((code) => ({
+				text: languages[code].nativeName,
+				callback_data: `lang:${code}`,
+			})),
+		);
 	}
 	return rows;
 }
