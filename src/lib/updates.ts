@@ -3,7 +3,6 @@ import { db, deliveries, users } from "@/db";
 import { categories, type CategoryKey, type LanguageCode } from "@/watch.ts";
 import {
 	formatUpdateAudioText,
-	formatUpdateLinkText,
 	formatUpdateMessage,
 	sendTelegramAudio,
 	type WatchUpdate,
@@ -66,7 +65,6 @@ export async function handleMonitorWebhook(event: ExaWebhookEvent) {
 	for (const update of updates) {
 		const baseMessage = formatUpdateMessage(update);
 		const baseAudioText = formatUpdateAudioText(update);
-		const linkText = formatUpdateLinkText(update);
 		const textByLanguage = new Map<string, string>();
 		const audioByLanguage = new Map<string, Buffer>();
 
@@ -84,28 +82,22 @@ export async function handleMonitorWebhook(event: ExaWebhookEvent) {
 						audioByLanguage.set(lang, audio);
 					}
 					await sendTelegramAudio({ chatId: user.id, audio });
-					if (linkText) {
-						await sendTelegramMessage({
-							chatId: user.id,
-							body: { text: linkText },
-						});
-					}
-				} else {
-					let message = textByLanguage.get(lang);
-					if (!message) {
-						message =
-							lang === "en-IN"
-								? baseMessage
-								: await translateText(baseMessage, lang, "en-IN");
-						textByLanguage.set(lang, message);
-					}
-					const chunks = splitTelegramMessageText(message);
-					for (const chunk of chunks) {
-						await sendTelegramMessage({
-							chatId: user.id,
-							body: { text: chunk },
-						});
-					}
+				}
+
+				let message = textByLanguage.get(lang);
+				if (!message) {
+					message =
+						lang === "en-IN"
+							? baseMessage
+							: await translateText(baseMessage, lang, "en-IN");
+					textByLanguage.set(lang, message);
+				}
+				const chunks = splitTelegramMessageText(message);
+				for (const chunk of chunks) {
+					await sendTelegramMessage({
+						chatId: user.id,
+						body: { text: chunk },
+					});
 				}
 				sent++;
 			} catch (e) {

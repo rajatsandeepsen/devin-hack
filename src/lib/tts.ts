@@ -33,11 +33,19 @@ function getTtsLanguage(language: LanguageCode): SarvamTtsLanguage {
 	return TTS_SUPPORTED[language] ?? "en-IN";
 }
 
+function sanitizeForSpeech(text: string): string {
+	return text
+		.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 $2")
+		.replace(/[*_`~#>|]/g, "")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
+}
+
 export async function textToSpeech(
 	text: string,
 	language: LanguageCode,
 ): Promise<Buffer> {
-	const trimmed = text.trim().slice(0, 2500);
+	const trimmed = sanitizeForSpeech(text).slice(0, 2500);
 	if (!trimmed) throw new Error("No text to convert to speech");
 
 	const { audio } = await generateSpeech({
