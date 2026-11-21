@@ -76,7 +76,7 @@ export default telegramChannel({
 					.from(users)
 					.where(eq(users.id, userId));
 				await ctx.telegram.sendMessage({
-					text: "Select the government update categories you want. Tap to toggle, then press Done.",
+					text: "Select a category to subscribe. Tap any category to add it.",
 					reply_markup: {
 						inline_keyboard: getCategoryKeyboard(user?.subscriptions ?? []),
 					},
@@ -149,17 +149,6 @@ export default telegramChannel({
 		}
 
 		if (kind === "sub" && value) {
-			if (value === "done") {
-				const [user] = await db
-					.select({ subscriptions: users.subscriptions })
-					.from(users)
-					.where(eq(users.id, userId));
-				await ctx.telegram.sendMessage(
-					formatSubscriptions(user?.subscriptions ?? []),
-				);
-				return;
-			}
-
 			if (!isCategoryKey(value)) return;
 			const category = value as CategoryKey;
 			const [user] = await db
@@ -172,19 +161,19 @@ export default telegramChannel({
 					categoryKeys.includes(s as CategoryKey),
 				),
 			);
-			if (current.has(category)) current.delete(category);
-			else current.add(category);
 
-			const wasAdded = !current.has(category);
-			if (wasAdded) {
-				current.add(category);
-				try {
-					await ensureCategoryMonitor(category);
-				} catch (e) {
-					console.error("Failed to ensure monitor", category, e);
-				}
-			} else {
-				current.delete(category);
+			if (current.has(category)) {
+				await ctx.telegram.sendMessage(
+					`You are already subscribed to ${categories[category].name}.`,
+				);
+				return;
+			}
+
+			current.add(category);
+			try {
+				await ensureCategoryMonitor(category);
+			} catch (e) {
+				console.error("Failed to ensure monitor", category, e);
 			}
 
 			const subscriptions = [...current];
@@ -196,10 +185,9 @@ export default telegramChannel({
 					set: { subscriptions, updatedAt: new Date() },
 				});
 
-			await ctx.telegram.sendMessage({
-				text: `Updated subscriptions. Tap to toggle more, or press Done.`,
-				reply_markup: { inline_keyboard: getCategoryKeyboard(subscriptions) },
-			});
+			await ctx.telegram.sendMessage(
+				`Subscribed to ${categories[category].name}.`,
+			);
 			return;
 		}
 	},

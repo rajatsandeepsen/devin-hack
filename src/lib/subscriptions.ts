@@ -82,6 +82,5 @@ export function getCategoryKeyboard(selected: string[] = []) {
 		});
 		rows.push(row);
 	}
-	rows.push([{ text: "Done", callback_data: "sub:done" }]);
 	return rows;
 }
