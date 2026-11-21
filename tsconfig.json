@@ -1,0 +1,21 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"display": "TypeScript Library",
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"strict": true,
+		"esModuleInterop": true,
+		"allowImportingTsExtensions": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"types": ["node"],
+		"paths": {
+			"@/*": ["./src/*"],
+			"@/db": ["./src/db/index.ts"]
+		}
+	},
+	"include": [".", ".eve/**/*.d.ts"],
+	"exclude": ["node_modules", ".output"]
+}
