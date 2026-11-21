@@ -7,6 +7,7 @@ import {
 	formatSubscriptions,
 	getCategoryKeyboard,
 	getLanguageKeyboard,
+	getVoiceKeyboard,
 } from "@/lib/subscriptions.ts";
 import {
 	type CategoryKey,
@@ -50,13 +51,19 @@ export default telegramChannel({
 		switch (command) {
 			case "/start": {
 				const [user] = await db
-					.select({ language: users.language })
+					.select({ language: users.language, voice: users.voice })
 					.from(users)
 					.where(eq(users.id, userId));
 				await ctx.telegram.sendMessage({
 					text: "Welcome to Watch Bot. Choose your preferred language:",
 					reply_markup: { inline_keyboard: getLanguageKeyboard(user?.language) },
 				});
+				if (user && (user.voice === null || user.voice === undefined)) {
+					await ctx.telegram.sendMessage({
+						text: "Do you want government updates as voice messages too? I can send a voice file with the update, and the link as text.",
+						reply_markup: { inline_keyboard: getVoiceKeyboard() },
+					});
+				}
 				return null;
 			}
 			case "/language": {
@@ -135,6 +142,10 @@ export default telegramChannel({
 
 		if (kind === "lang" && value && isLanguageCode(value)) {
 			const lang = value as LanguageCode;
+			const [existing] = await db
+				.select({ voice: users.voice })
+				.from(users)
+				.where(eq(users.id, userId));
 			await db
 				.insert(users)
 				.values({ id: userId, language: lang })
@@ -143,7 +154,34 @@ export default telegramChannel({
 					set: { language: lang, updatedAt: new Date() },
 				});
 			await ctx.telegram.sendMessage(
-				`Language set to ${languages[lang].nativeName} (${lang}). Now use /subscribe to pick update categories.`,
+				`Language set to ${languages[lang].nativeName} (${lang}).`,
+			);
+			if (existing?.voice === null || existing?.voice === undefined) {
+				await ctx.telegram.sendMessage({
+					text: "Do you want government updates as voice messages too? I can send a voice file with the update, and the link as text.",
+					reply_markup: { inline_keyboard: getVoiceKeyboard() },
+				});
+			} else {
+				await ctx.telegram.sendMessage(
+					"Now use /subscribe to pick update categories.",
+				);
+			}
+			return;
+		}
+
+		if (kind === "voice" && (value === "yes" || value === "no")) {
+			const voice = value === "yes";
+			await db
+				.insert(users)
+				.values({ id: userId, voice })
+				.onConflictDoUpdate({
+					target: users.id,
+					set: { voice, updatedAt: new Date() },
+				});
+			await ctx.telegram.sendMessage(
+				voice
+					? "Voice updates enabled. I will send update audio and the link as text. Use /subscribe to pick categories."
+					: "Voice updates disabled. I will send text updates. Use /subscribe to pick categories.",
 			);
 			return;
 		}

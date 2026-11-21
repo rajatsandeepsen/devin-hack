@@ -24,6 +24,7 @@ export function formatProfile(user?: {
 	id: string;
 	language?: string | null;
 	subscriptions?: string[] | null;
+	voice?: boolean | null;
 } | null) {
 	if (!user) return "No profile found yet. Send /start to set up Watch Bot.";
 
@@ -39,11 +40,28 @@ export function formatProfile(user?: {
 		categoryKeys.includes(s as CategoryKey),
 	);
 
+	const voiceLabel =
+		user.voice === null || user.voice === undefined
+			? "Not set"
+			: user.voice
+				? "On"
+				: "Off";
+
 	return [
 		"Your Watch Bot profile:",
 		`- Language: ${languageLabel}`,
+		`- Voice updates: ${voiceLabel}`,
 		`- Subscriptions: ${subs.length ? subs.map((s) => categories[s].name).join(", ") : "None"}`,
 	].join("\n");
+}
+
+export function getVoiceKeyboard() {
+	return [
+		[
+			{ text: "Yes, send voice", callback_data: "voice:yes" },
+			{ text: "No, text only", callback_data: "voice:no" },
+		],
+	];
 }
 
 export function getLanguageKeyboard(preferredLanguage?: string | null) {

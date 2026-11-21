@@ -1,6 +1,6 @@
+import { generateText } from "ai";
+import { sarvam } from "sarvam-ai-sdk";
 import { DEFAULT_LANGUAGE, type LanguageCode } from "@/watch.ts";
-
-const SARVAM_TRANSLATE_URL = "https://api.sarvam.ai/translate";
 
 export async function translateText(
 	text: string,
@@ -13,41 +13,32 @@ export async function translateText(
 	}
 	if (targetLanguage === sourceLanguage) return text;
 
-	const apiKey = process.env.SARVAM_API_KEY;
-	if (!apiKey) {
-		console.warn("SARVAM_API_KEY missing; returning original text");
-		return text;
-	}
-
-	// Sarvam translate has length limits; chunk conservatively.
 	const chunks = chunkText(text, 1800);
 	const translated: string[] = [];
 
 	for (const chunk of chunks) {
-		const res = await fetch(SARVAM_TRANSLATE_URL, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"api-subscription-key": apiKey,
-			},
-			body: JSON.stringify({
-				input: chunk,
-				source_language_code: sourceLanguage,
-				target_language_code: targetLanguage,
-				model: "sarvam-translate:v1",
-				mode: "formal",
-			}),
-		});
+		try {
+			const model =
+				sourceLanguage === "auto"
+					? sarvam.translation("mayura:v1", {
+							from: "auto",
+							to: targetLanguage as any,
+						})
+					: sarvam.translation("sarvam-translate:v1", {
+							from: sourceLanguage as any,
+							to: targetLanguage as any,
+							mode: "formal",
+						});
 
-		if (!res.ok) {
-			const body = await res.text().catch(() => "");
-			console.error("Sarvam translate failed", res.status, body);
+			const result = await generateText({
+				model,
+				prompt: chunk,
+			});
+			translated.push(result.text?.trim() || chunk);
+		} catch (e) {
+			console.error("Sarvam translate failed", e);
 			translated.push(chunk);
-			continue;
 		}
-
-		const data = (await res.json()) as { translated_text?: string };
-		translated.push(data.translated_text ?? chunk);
 	}
 
 	return translated.join("\n");

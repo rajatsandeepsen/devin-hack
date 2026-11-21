@@ -1,9 +1,15 @@
-import { eq } from "drizzle-orm";
 import { sendTelegramMessage, splitTelegramMessageText } from "eve/channels/telegram";
 import { db, deliveries, users } from "@/db";
 import { categories, type CategoryKey, type LanguageCode } from "@/watch.ts";
-import { formatUpdateMessage, type WatchUpdate } from "./notify.ts";
+import {
+	formatUpdateAudioText,
+	formatUpdateLinkText,
+	formatUpdateMessage,
+	sendTelegramAudio,
+	type WatchUpdate,
+} from "./notify.ts";
 import { translateText } from "./translate.ts";
+import { textToSpeech } from "./tts.ts";
 
 type ExaWebhookEvent = {
 	id?: string;
@@ -59,31 +65,52 @@ export async function handleMonitorWebhook(event: ExaWebhookEvent) {
 	let sent = 0;
 	for (const update of updates) {
 		const baseMessage = formatUpdateMessage(update);
-		const byLanguage = new Map<string, string>();
+		const baseAudioText = formatUpdateAudioText(update);
+		const linkText = formatUpdateLinkText(update);
+		const textByLanguage = new Map<string, string>();
+		const audioByLanguage = new Map<string, Buffer>();
 
 		for (const user of matching) {
 			const lang = (user.language ?? "en-IN") as LanguageCode;
-			let message = byLanguage.get(lang);
-			if (!message) {
-				message =
-					lang === "en-IN"
-						? baseMessage
-						: await translateText(baseMessage, lang, "en-IN");
-				byLanguage.set(lang, message);
-			}
-
-			const chunks = splitTelegramMessageText(message);
-			for (const chunk of chunks) {
-				try {
-					await sendTelegramMessage({
-						chatId: user.id,
-						body: { text: chunk },
-					});
-				} catch (e) {
-					console.error("Failed to send update", user.id, e);
+			try {
+				if (user.voice) {
+					let audio = audioByLanguage.get(lang);
+					if (!audio) {
+						const audioText =
+							lang === "en-IN"
+								? baseAudioText
+								: await translateText(baseAudioText, lang, "en-IN");
+						audio = await textToSpeech(audioText, lang);
+						audioByLanguage.set(lang, audio);
+					}
+					await sendTelegramAudio({ chatId: user.id, audio });
+					if (linkText) {
+						await sendTelegramMessage({
+							chatId: user.id,
+							body: { text: linkText },
+						});
+					}
+				} else {
+					let message = textByLanguage.get(lang);
+					if (!message) {
+						message =
+							lang === "en-IN"
+								? baseMessage
+								: await translateText(baseMessage, lang, "en-IN");
+						textByLanguage.set(lang, message);
+					}
+					const chunks = splitTelegramMessageText(message);
+					for (const chunk of chunks) {
+						await sendTelegramMessage({
+							chatId: user.id,
+							body: { text: chunk },
+						});
+					}
 				}
+				sent++;
+			} catch (e) {
+				console.error("Failed to send update", user.id, e);
 			}
-			sent++;
 		}
 	}
 

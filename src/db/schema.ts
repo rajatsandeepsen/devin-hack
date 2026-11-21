@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { categoryKeys, languageCodes } from "../watch.ts";
 import { createdAt, updatedAt } from "./utils.ts";
 
@@ -13,6 +13,7 @@ export const users = pgTable(
 			.array()
 			.default([])
 			.notNull(),
+		voice: boolean(),
 		createdAt: createdAt(),
 		updatedAt: updatedAt(),
 	},
