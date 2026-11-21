@@ -25,7 +25,7 @@ async function ensureUser(id: string) {
 }
 
 export default telegramChannel({
-	botUsername: "watch_updates_bot",
+	botUsername: "watch_india_bot",
 	credentials: {
 		botToken: process.env.TELEGRAM_BOT_TOKEN,
 		webhookSecretToken: process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN,
