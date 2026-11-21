@@ -1,36 +1,25 @@
+import Exa from "exa-js";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { categories, type CategoryKey } from "@/watch.ts";
 
-const EXA_API_BASE = "https://api.exa.ai";
-
-type ExaMonitor = {
-	id: string;
-	name: string;
-	status?: string;
-	webhookSecret?: string;
-	webhook?: { url: string; events?: string[] };
-};
-
-function getExaApiKey() {
+function getExa() {
 	const key = process.env.EXA_API_KEY;
 	if (!key) throw new Error("EXA_API_KEY is missing");
-	return key;
+	return new Exa(key);
 }
 
-async function exaFetch<T>(path: string, init?: RequestInit): Promise<T> {
-	const res = await fetch(`${EXA_API_BASE}${path}`, {
-		...init,
-		headers: {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${getExaApiKey()}`,
-			...(init?.headers ?? {}),
-		},
-	});
-	if (!res.ok) {
-		const body = await res.text().catch(() => "");
-		throw new Error(`Exa API ${path} failed: ${res.status} ${body}`);
-	}
-	return (await res.json()) as T;
-}
+export type ExaMonitorListItem = {
+	id: string;
+	name?: string | null;
+	status?: string;
+	search?: { query?: string };
+	trigger?: { type?: string; period?: string } | null;
+	webhook?: { url?: string; events?: string[] } | null;
+	metadata?: Record<string, string> | null;
+	nextRunAt?: string | null;
+	createdAt?: string;
+	updatedAt?: string;
+};
 
 export function getCategoryQuery(category: CategoryKey): string {
 	const cat = categories[category];
@@ -39,7 +28,6 @@ export function getCategoryQuery(category: CategoryKey): string {
 
 export function getCategoryDomains(category: CategoryKey): string[] {
 	const cat = categories[category];
-	// Include category domains plus broad gov/nic domains.
 	const domains = new Set([...cat.domains, "gov.in", "nic.in"]);
 	return [...domains];
 }
@@ -48,29 +36,41 @@ export async function createCategoryMonitor(
 	category: CategoryKey,
 	webhookUrl: string,
 ) {
+	const exa = getExa();
 	const cat = categories[category];
-	return exaFetch<ExaMonitor>("/monitors", {
-		method: "POST",
-		body: JSON.stringify({
-			name: `watch-bot:${category}`,
-			search: {
-				query: getCategoryQuery(category),
-				numResults: 5,
-				includeDomains: getCategoryDomains(category),
-				contents: { highlights: true },
-			},
-			trigger: { type: "interval", period: "1h" },
-			webhook: {
-				url: webhookUrl,
-				events: ["monitor.run.completed"],
-			},
-			metadata: { category },
-		}),
-	});
+	return exa.monitors.create({
+		name: `watch-bot:${category}`,
+		search: {
+			query: getCategoryQuery(category),
+			numResults: 5,
+			includeDomains: getCategoryDomains(category),
+			contents: { highlights: true },
+		},
+		trigger: { type: "interval", period: "1h" },
+		webhook: {
+			url: webhookUrl,
+			events: ["monitor.run.completed"],
+		},
+		metadata: { category, app: "watch-bot", label: cat.name },
+	} as any);
+}
+
+export async function listMonitors(params?: {
+	status?: "active" | "paused" | "disabled";
+	cursor?: string;
+	limit?: number;
+}) {
+	const exa = getExa();
+	return exa.monitors.list(params as any) as Promise<{
+		data: ExaMonitorListItem[];
+		hasMore: boolean;
+		nextCursor?: string | null;
+	}>;
 }
 
 export async function triggerMonitor(monitorId: string) {
-	return exaFetch(`/monitors/${monitorId}/trigger`, { method: "POST" });
+	const exa = getExa();
+	return exa.monitors.trigger(monitorId);
 }
 
 export function verifyExaSignature(
@@ -95,5 +95,3 @@ export function verifyExaSignature(
 	if (actual.length !== exp.length) return false;
 	return timingSafeEqual(actual, exp);
 }
-
-import { createHmac, timingSafeEqual } from "node:crypto";
