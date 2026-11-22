@@ -1,6 +1,11 @@
 # Watch Bot
 
+![pic](./docs/1.png)
+![pic](./docs/2.png)
+
 Telegram bot that delivers hourly Indian government updates in the user's native language.
+
+It monitor government website and hourly sent telegram message and notification to users to their own language and voice preference. 
 
 Built with [Eve](https://eve.dev), Exa Monitors, Sarvam AI, Drizzle ORM, and Postgres.
 
